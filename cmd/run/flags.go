@@ -87,6 +87,10 @@ func bindRunFlags(command *cobra.Command) {
 	util.MustBindPFlag("datastore.engine", flags.Lookup("datastore-engine"))
 	util.MustBindEnv("datastore.engine", "OPENFGA_DATASTORE_ENGINE")
 
+	flags.String("aws-region", defaultConfig.Datastore.AWSRegion, "the aws region to connect to for dynamo")
+	util.MustBindPFlag("datastore.awsRegion", flags.Lookup("aws-region"))
+	util.MustBindEnv("datastore.awsRegion", "OPENFGA_DATASTORE_AWS_REGION")
+
 	flags.String("datastore-uri", defaultConfig.Datastore.URI, "the connection uri to use to connect to the datastore (for any engine other than 'memory')")
 	util.MustBindPFlag("datastore.uri", flags.Lookup("datastore-uri"))
 	util.MustBindEnv("datastore.uri", "OPENFGA_DATASTORE_URI")

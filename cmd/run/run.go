@@ -39,6 +39,7 @@ import (
 	"github.com/openfga/openfga/pkg/storage/memory"
 	"github.com/openfga/openfga/pkg/storage/mysql"
 	"github.com/openfga/openfga/pkg/storage/postgres"
+	"github.com/openfga/openfga/pkg/storage/dynamo"
 	"github.com/openfga/openfga/pkg/telemetry"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
@@ -76,6 +77,7 @@ type DatastoreConfig struct {
 	// Engine is the datastore engine to use (e.g. 'memory', 'postgres', 'mysql')
 	Engine string
 	URI    string
+	AWSRegion	string
 
 	// MaxCacheSize is the maximum number of cache keys that the storage cache can store before evicting
 	// old keys. The storage cache is used to cache query results for various static resources
@@ -236,6 +238,7 @@ func DefaultConfig() *Config {
 			MaxCacheSize: 100000,
 			MaxIdleConns: 10,
 			MaxOpenConns: 30,
+			AWSRegion: "eu-west-2",
 		},
 		GRPC: GRPCConfig{
 			Addr: "0.0.0.0:8081",
@@ -437,6 +440,11 @@ func RunServer(ctx context.Context, config *Config) error {
 		datastore, err = postgres.New(config.Datastore.URI, dsCfg)
 		if err != nil {
 			return fmt.Errorf("failed to initialize postgres datastore: %w", err)
+		}
+	case "dynamo":
+		datastore, err = dynamo.New(config.Datastore.URI, dsCfg)
+		if err != nil {
+			return fmt.Errorf("failed to initialize dynamo datastore: %w", err)
 		}
 	default:
 		return fmt.Errorf("storage engine '%s' is unsupported", config.Datastore.Engine)

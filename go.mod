@@ -98,4 +98,6 @@ require (
 	google.golang.org/genproto v0.0.0-20230131230820-1c016267d619 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
+	github.com/aws/aws-sdk-go v1.44.201 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )

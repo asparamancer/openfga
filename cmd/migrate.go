@@ -13,12 +13,17 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
 const (
 	datastoreEngineFlag = "datastore-engine"
 	datastoreURIFlag    = "datastore-uri"
 	versionFlag         = "version"
+	awsRegionFlag		= "aws-region"
 )
 
 func NewMigrateCommand() *cobra.Command {
@@ -50,6 +55,7 @@ func runMigration(_ *cobra.Command, _ []string) error {
 	engine := viper.GetString(datastoreEngineFlag)
 	uri := viper.GetString(datastoreURIFlag)
 	version := viper.GetUint(versionFlag)
+	awsRegion := viper.GetString(awsRegionFlag)
 
 	goose.SetLogger(goose.NopLogger())
 
@@ -140,6 +146,61 @@ func runMigration(_ *cobra.Command, _ []string) error {
 		}
 
 		return nil
+	case "dynamo":
+		
+    	// sess, err := session.NewSession(&aws.Config{
+        // 	Region: aws.String("eu-west-2"),
+		// 	Endpoint: aws.String(uri),
+		// 	Credentials: credentials.NewStaticCredentials("foo", "bar", ""),
+		// })
+
+		fmt.Println("region %s", awsRegion)
+
+		sess, err := session.NewSession(&aws.Config{     
+    		Endpoint: aws.String("http://localhost:8000")}, 
+		)
+
+		if err != nil {
+        	log.Fatalf("Got error creating session: %s", err)
+    	}
+		
+		svc := dynamodb.New(sess)
+
+    // 
+		// db := dynamodb.New(sess)
+		tableName := "tuple"
+
+		input := &dynamodb.CreateTableInput{
+			AttributeDefinitions: []*dynamodb.AttributeDefinition{
+				{
+					AttributeName: aws.String("primary_key"),
+					AttributeType: aws.String("S"),
+			}},
+			KeySchema: []*dynamodb.KeySchemaElement{
+				{
+					AttributeName: aws.String("primary_key"),
+					KeyType:       aws.String("HASH"),
+			}},
+			ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+				ReadCapacityUnits:  aws.Int64(1),
+				WriteCapacityUnits: aws.Int64(1),
+			},
+			TableName: aws.String(tableName),
+		}
+
+		result, err := svc.CreateTable(input)
+		
+		if err != nil {
+			log.Fatalf("Got error calling CreateTable: %s", err)
+		}
+
+		fmt.Println("Created table: %s", tableName)
+		fmt.Println("result: ", result)
+		// tuple, authorization_model, store, assertion, changelog
+
+		return nil
+
+
 	default:
 		return fmt.Errorf("unknown datastore engine type: %s", engine)
 	}
@@ -156,4 +217,7 @@ func bindMigrateFlags(cmd *cobra.Command) {
 
 	flags.Uint(versionFlag, 0, "`the version to migrate to. If omitted, the latest version of the schema will be used`")
 	util.MustBindPFlag("version", flags.Lookup(versionFlag))
+
+	flags.String(awsRegionFlag, "", "the aws region to connect to for dynamo")
+	util.MustBindPFlag(datastoreURIFlag, flags.Lookup(datastoreURIFlag))
 }
