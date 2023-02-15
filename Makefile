@@ -33,6 +33,11 @@ start-postgres: ## Start a Postgres Docker container
 	docker run -d --name postgres -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password postgres:14
 	@echo \> use \'postgres://postgres:password@localhost:5432/postgres\' to connect to postgres
 
+.PHONY: start-dynamo
+start-postgres: ## Start a Postgres Docker container
+	docker run -d --name dynamo -p 8000:8000 -e AWS_ACCESS_KEY_ID=fakeMyKeyId -e AWS_SECRET_ACCESS_KEY=fakeSecretAccessKey amazon/dynamodb-local
+	@echo \> use \'http://localhost:8000/' to connect to dynamo
+
 .PHONY: migrate-postgres
 migrate-postgres: build ## Run Postgres migrations
 	# nosemgrep: detected-username-and-password-in-uri
