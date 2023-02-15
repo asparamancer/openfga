@@ -14,16 +14,37 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  
+  dynamodb:
+    image:  amazon/dynamodb-local
+    container_name: dynamodb
+    hostname: dynamodb
+    restart: always
+    networks:
+      - default
+    ports:
+      - 8000:8000
+    environment:
+      - AWS_ACCESS_KEY_ID=fakeMyKeyId
+      - AWS_SECRET_ACCESS_KEY=fakeSecretAccessKey
+    volumes:
+      -  ./dynamodb-data:/home/dynamodblocal/data
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/shell/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   migrate:
     depends_on:
-      postgres:
+      dynamodb:
         condition: service_healthy
-    image: openfga/openfga:latest
+    image: openfga-dynamo:latest
     container_name: migrate
     environment:
-      - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres:5432/postgres?sslmode=disable
+      - OPENFGA_DATASTORE_ENGINE=dynamo
+      - OPENFGA_DATASTORE_URI=http://localhost:8000
     command: migrate
     networks:
       - default
@@ -34,12 +55,12 @@ services:
         condition: service_completed_successfully
       otel-collector:
         condition: service_started
-    image: openfga/openfga:latest
+    image: openfga-dynamo:latest
     container_name: openfga
     command: run
     environment:
-      - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres:5432/postgres?sslmode=disable
+      - OPENFGA_DATASTORE_ENGINE=dynamo
+      - OPENFGA_DATASTORE_URI=http://localhost:8000
       - OPENFGA_TRACE_ENABLED=true
       - OPENFGA_TRACE_SAMPLE_RATIO=1
       - OPENFGA_TRACE_OTLP_ENDPOINT=otel-collector:4317
@@ -51,6 +72,7 @@ services:
       - "8081:8081"
       - "3000:3000"
       - "2112:2112"
+      - "8000:8000"
     healthcheck:
       test: ["CMD", "/bin/grpc_health_probe", "-addr=openfga:8081"]
       interval: 5s
